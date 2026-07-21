@@ -1,5 +1,7 @@
 import type { LogEntry, ParsedFileMeta, Priority } from "./types";
 import {
+  inferDateFromContent,
+  inferHourFromContent,
   isContinuationLine,
   isHeartbeat,
   isInOutMessage,
@@ -21,7 +23,10 @@ export function parseLogText(
   fileName: string,
   startLineNumber = 1,
 ): { entries: LogEntry[]; meta: ParsedFileMeta } {
-  const { date, hour } = parseFileName(fileName);
+  let { date, hour } = parseFileName(fileName);
+  if (!date) date = inferDateFromContent(text);
+  if (!hour) hour = inferHourFromContent(text);
+
   const lines = text.split(/\r?\n/);
   const entries: LogEntry[] = [];
   let current: LogEntry | null = null;

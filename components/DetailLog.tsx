@@ -43,7 +43,6 @@ export function DetailLog({ entries, filters, onFiltersChange }: DetailLogProps)
 
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold text-stone-800">Дэлгэрэнгүй лог</h2>
       <LogFilters
         filters={filters}
         modules={modules}

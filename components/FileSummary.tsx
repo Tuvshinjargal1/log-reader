@@ -1,84 +1,91 @@
 "use client";
 
+import { useRef } from "react";
 import type { ParsedLog } from "@/lib/types";
 import { formatAmount } from "@/lib/labels.mn";
 
 interface FileSummaryProps {
   data: ParsedLog;
   onClear: () => void;
+  onReplace: (files: File[]) => void;
+  busy?: boolean;
 }
 
-export function FileSummary({ data, onClear }: FileSummaryProps) {
+export function FileSummary({ data, onClear, onReplace, busy }: FileSummaryProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const primary = data.files[0];
+  const extra = data.files.length - 1;
+  const totalAmount = data.deals.reduce((s, d) => s + (d.amount ?? 0), 0);
+
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-stone-200 bg-white px-5 py-4 shadow-sm">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
       <div className="min-w-0 flex-1">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-stone-500">
-          Ачаалсан файл
-        </h2>
-        <ul className="mt-1 space-y-0.5">
-          {data.files.map((f) => (
-            <li key={f.fileName} className="truncate text-sm text-stone-800">
-              <span className="font-medium">{f.fileName}</span>
-              {f.date && (
-                <span className="ml-2 text-stone-500">
-                  {f.date}
-                  {f.hour != null ? ` · ${f.hour}:00` : ""}
-                </span>
-              )}
-              <span className="ml-2 text-stone-400">
-                {f.entryCount.toLocaleString("mn-MN")} мөр
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="truncate text-sm font-medium text-stone-800">
+          {primary?.fileName ?? "файл"}
+          {extra > 0 && (
+            <span className="ml-1 font-normal text-stone-400">+{extra}</span>
+          )}
+        </div>
+        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-stone-500">
+          {primary?.date && (
+            <span>
+              {primary.date}
+              {primary.hour != null ? ` · ${primary.hour}:00` : ""}
+            </span>
+          )}
+          <span>
+            <strong className="font-semibold text-teal-700">{data.dealCount}</strong>{" "}
+            борлуулалт
+          </span>
+          <span>
+            <strong
+              className={
+                data.errorCount > 0
+                  ? "font-semibold text-red-600"
+                  : "font-semibold text-stone-700"
+              }
+            >
+              {data.errorCount}
+            </strong>{" "}
+            алдаа
+          </span>
+          {totalAmount > 0 && (
+            <span className="tabular-nums">{formatAmount(totalAmount)}</span>
+          )}
+          <span className="text-stone-400">
+            {data.entries.length.toLocaleString("mn-MN")} мөр
+          </span>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-3 text-center">
-        <Stat label="Нийт мөр" value={data.entries.length.toLocaleString("mn-MN")} />
-        <Stat label="Борлуулалт" value={String(data.dealCount)} accent="teal" />
-        <Stat
-          label="Алдаа"
-          value={String(data.errorCount)}
-          accent={data.errorCount > 0 ? "red" : "stone"}
-        />
-        {data.deals.some((d) => d.amount) && (
-          <Stat
-            label="Нийт дүн (олдсон)"
-            value={formatAmount(
-              data.deals.reduce((s, d) => s + (d.amount ?? 0), 0),
-            )}
-          />
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={onClear}
-        className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100"
-      >
-        Цэвэрлэх
-      </button>
-    </div>
-  );
-}
 
-function Stat({
-  label,
-  value,
-  accent = "stone",
-}: {
-  label: string;
-  value: string;
-  accent?: "teal" | "red" | "stone";
-}) {
-  const color =
-    accent === "teal"
-      ? "text-teal-700"
-      : accent === "red"
-        ? "text-red-600"
-        : "text-stone-800";
-  return (
-    <div className="min-w-[4.5rem] rounded-lg bg-stone-50 px-3 py-2">
-      <div className={`text-lg font-semibold tabular-nums ${color}`}>{value}</div>
-      <div className="text-xs text-stone-500">{label}</div>
+      <div className="flex shrink-0 gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".log,.txt,text/plain"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files?.length) onReplace(Array.from(e.target.files));
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+        >
+          Файл солих
+        </button>
+        <button
+          type="button"
+          onClick={onClear}
+          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-50"
+        >
+          Цэвэрлэх
+        </button>
+      </div>
     </div>
   );
 }

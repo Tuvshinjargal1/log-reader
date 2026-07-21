@@ -4,7 +4,7 @@ import { resetEntryIds, parseLogText, mergeParsedFiles } from "../lib/parseFile"
 import { buildParsedLog } from "../lib/buildDeals";
 
 const exampleDir = path.join(__dirname, "..", "..", "log example");
-const files = ["smartpos.20260720__14.log", "smartpos.20260719__08.log"];
+const files = ["smartpos.log", "smartpos.20260720__14.log"];
 
 resetEntryIds();
 const results = files.map((f) => {
@@ -14,48 +14,33 @@ const results = files.map((f) => {
 const { entries, files: metas } = mergeParsedFiles(results);
 const parsed = buildParsedLog(entries, metas);
 
+const plain = results[0];
+const plainParsed = buildParsedLog(plain.entries, [plain.meta]);
+const d = plainParsed.deals[0];
+
 console.log(
   JSON.stringify(
     {
+      plainMeta: plain.meta,
+      plainDeals: plainParsed.dealCount,
+      plainFirst: d
+        ? {
+            date: d.date,
+            amount: d.amount,
+            payment: d.paymentMethod,
+            basket: d.basket.map((b) => b.name),
+            ebarimt: d.ebarimt,
+          }
+        : null,
       files: metas.map((m) => ({
         name: m.fileName,
+        date: m.date,
+        hour: m.hour,
         entries: m.entryCount,
-        lines: m.lineCount,
       })),
       totalEntries: entries.length,
       deals: parsed.dealCount,
       errors: parsed.errorCount,
-      firstDeal: parsed.deals[0]
-        ? {
-            index: parsed.deals[0].index,
-            start: parsed.deals[0].startTime,
-            events: parsed.deals[0].events.length,
-            salesNo: parsed.deals[0].salesNo,
-            amount: parsed.deals[0].amount,
-            payment: parsed.deals[0].paymentMethod,
-            hasError: parsed.deals[0].hasError,
-            basket: parsed.deals[0].basket,
-            paymentInfo: parsed.deals[0].payment,
-            ebarimt: parsed.deals[0].ebarimt,
-            receiptLineCount: parsed.deals[0].receiptLines?.length ?? 0,
-            eventTitles: parsed.deals[0].events
-              .slice(0, 12)
-              .map((e) => e.title + (e.detail ? " | " + e.detail : "")),
-          }
-        : null,
-      errorDeals: parsed.deals
-        .filter((d) => d.errors.length > 0)
-        .map((d) => ({
-          index: d.index,
-          errors: d.errors.map((e) => `${e.technical}: ${e.explanation} ${e.location ?? ""}`),
-        })),
-      kinds: entries.reduce(
-        (a: Record<string, number>, e) => {
-          a[e.eventKind] = (a[e.eventKind] || 0) + 1;
-          return a;
-        },
-        {},
-      ),
     },
     null,
     2,

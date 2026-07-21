@@ -6,10 +6,17 @@ import { formatAmount } from "@/lib/labels.mn";
 
 interface OverviewStatsProps {
   deals: Deal[];
+  hourFilter: string | null;
+  onSelectHour: (hour: string) => void;
   onSelectDeal: (deal: Deal) => void;
 }
 
-export function OverviewStats({ deals, onSelectDeal }: OverviewStatsProps) {
+export function OverviewStats({
+  deals,
+  hourFilter,
+  onSelectHour,
+  onSelectDeal,
+}: OverviewStatsProps) {
   const hourly = useMemo(() => {
     const map = new Map<string, number>();
     for (const d of deals) {
@@ -42,28 +49,52 @@ export function OverviewStats({ deals, onSelectDeal }: OverviewStatsProps) {
 
   return (
     <section className="grid gap-4 lg:grid-cols-3">
-      {/* Hourly activity */}
+      {/* Hourly activity — clickable filter */}
       <div className="rounded-xl border border-stone-200 bg-white p-4">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-500">
+        <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-500">
           Цаг тутмын борлуулалт
         </h3>
-        <div className="space-y-1.5">
-          {hourly.map(([hour, count]) => (
-            <div key={hour} className="flex items-center gap-2 text-sm">
-              <span className="w-12 shrink-0 font-mono text-xs text-stone-500">
-                {hour}:00
-              </span>
-              <div className="h-4 flex-1 rounded bg-stone-100">
-                <div
-                  className="h-4 rounded bg-teal-500/70"
-                  style={{ width: `${(count / maxHourly) * 100}%` }}
-                />
-              </div>
-              <span className="w-6 shrink-0 text-right tabular-nums text-stone-600">
-                {count}
-              </span>
-            </div>
-          ))}
+        <p className="mb-3 text-xs text-stone-400">
+          Цаг дээр дарж тухайн цагийн борлуулалтыг шүүнэ
+        </p>
+        <div className="space-y-1">
+          {hourly.map(([hour, count]) => {
+            const active = hourFilter === hour;
+            return (
+              <button
+                key={hour}
+                type="button"
+                onClick={() => onSelectHour(hour)}
+                className={[
+                  "flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors",
+                  active
+                    ? "bg-teal-50 ring-1 ring-teal-400"
+                    : "hover:bg-stone-50",
+                ].join(" ")}
+              >
+                <span
+                  className={[
+                    "w-12 shrink-0 font-mono text-xs",
+                    active ? "font-semibold text-teal-700" : "text-stone-500",
+                  ].join(" ")}
+                >
+                  {hour}:00
+                </span>
+                <div className="h-4 flex-1 rounded bg-stone-100">
+                  <div
+                    className={[
+                      "h-4 rounded",
+                      active ? "bg-teal-600" : "bg-teal-500/70",
+                    ].join(" ")}
+                    style={{ width: `${(count / maxHourly) * 100}%` }}
+                  />
+                </div>
+                <span className="w-6 shrink-0 text-right tabular-nums text-stone-600">
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

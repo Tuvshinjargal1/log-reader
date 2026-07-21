@@ -72,8 +72,12 @@ export function UploadZone({ onFiles, busy }: UploadZoneProps) {
         {busy ? "Файл уншиж байна…" : "Лог файл оруулах"}
       </p>
       <p className="mt-2 text-sm text-stone-500">
-        Файл чирж тавих эсвэл дарж сонгоно уу. Олон{" "}
-        <code className="rounded bg-stone-200 px-1 text-xs">smartpos.*.log</code>{" "}
+        Файл чирж тавих эсвэл дарж сонгоно уу.{" "}
+        <code className="rounded bg-stone-200 px-1 text-xs">smartpos.log</code>{" "}
+        эсвэл{" "}
+        <code className="rounded bg-stone-200 px-1 text-xs">
+          smartpos.YYYYMMDD__HH.log
+        </code>{" "}
         зэрэг сонгож болно.
       </p>
       <p className="mt-1 text-xs text-stone-400">

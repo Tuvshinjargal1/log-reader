@@ -1,7 +1,6 @@
 "use client";
 
 import type { Deal } from "@/lib/types";
-import { eventIcon, eventIconColor } from "@/lib/eventIcons";
 import { formatAmount, formatDuration } from "@/lib/labels.mn";
 
 interface DealCardProps {
@@ -9,8 +8,6 @@ interface DealCardProps {
   selected: boolean;
   onSelect: (deal: Deal) => void;
 }
-
-const KOREAN_RE = /[\uAC00-\uD7AF]/;
 
 export function DealCard({ deal, selected, onSelect }: DealCardProps) {
   const itemCount = deal.basket.reduce((s, i) => s + i.qty, 0);
@@ -29,7 +26,7 @@ export function DealCard({ deal, selected, onSelect }: DealCardProps) {
       ].join(" ")}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-stone-800">
               #{deal.index} Борлуулалт
@@ -55,8 +52,13 @@ export function DealCard({ deal, selected, onSelect }: DealCardProps) {
             {deal.startTime.slice(0, 8)} → {deal.endTime.slice(0, 8)}
             <span className="ml-2">({formatDuration(deal.durationMs)})</span>
           </div>
+          {deal.salesNo && (
+            <div className="mt-1 truncate font-mono text-xs text-stone-400">
+              {deal.salesNo}
+            </div>
+          )}
         </div>
-        <div className="text-right text-sm">
+        <div className="shrink-0 text-right text-sm">
           {deal.amount != null && (
             <div className="font-semibold tabular-nums text-stone-800">
               {formatAmount(deal.amount)}
@@ -65,6 +67,9 @@ export function DealCard({ deal, selected, onSelect }: DealCardProps) {
           {deal.paymentMethod && (
             <div className="text-stone-500">{deal.paymentMethod}</div>
           )}
+          <div className="mt-1 text-xs text-teal-700">
+            {selected ? "Дэлгэрэнгүй ▾" : "Дэлгэрэнгүй ▸"}
+          </div>
         </div>
       </div>
 
@@ -74,54 +79,6 @@ export function DealCard({ deal, selected, onSelect }: DealCardProps) {
           {deal.errors.length > 1 && ` (+${deal.errors.length - 1} алдаа)`}
         </div>
       )}
-
-      {deal.salesNo && (
-        <div className="mt-2 truncate font-mono text-xs text-stone-400">
-          {deal.salesNo}
-        </div>
-      )}
-
-      <ol className="mt-3 space-y-1.5 border-t border-stone-100 pt-3">
-        {deal.events.slice(0, 8).map((ev, i) => {
-          const isInternal = KOREAN_RE.test(ev.detail ?? "");
-          return (
-            <li key={`${ev.entryId}-${i}`} className="flex items-baseline gap-2 text-sm">
-              <span className="w-16 shrink-0 font-mono text-xs text-stone-400">
-                {ev.time.slice(0, 8)}
-              </span>
-              <span
-                className={[
-                  "inline-flex h-4 w-4 shrink-0 translate-y-0.5 items-center justify-center rounded-full text-[9px]",
-                  ev.isError ? "bg-red-100 text-red-700" : eventIconColor(ev.kind),
-                ].join(" ")}
-              >
-                {eventIcon(ev.kind)}
-              </span>
-              <span
-                className={
-                  ev.isError
-                    ? "font-medium text-red-700"
-                    : isInternal
-                      ? "text-stone-400"
-                      : "text-stone-700"
-                }
-              >
-                {ev.title}
-                {ev.detail && (
-                  <span className={isInternal ? "ml-1 text-stone-300" : "ml-1 text-stone-500"}>
-                    — {isInternal ? "(системийн дотоод мессеж)" : ev.detail}
-                  </span>
-                )}
-              </span>
-            </li>
-          );
-        })}
-        {deal.events.length > 8 && (
-          <li className="text-xs text-stone-400">
-            +{deal.events.length - 8} алхам — дарж дэлгэрэнгүй үзнэ үү
-          </li>
-        )}
-      </ol>
     </button>
   );
 }
