@@ -17,3 +17,10 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/* Leaflet divIcon — default white square-г арилгана */
+.leaflet-div-icon.gs25-load-marker,
+.leaflet-div-icon.gs25-suggest-marker {
+  background: transparent;
+  border: none;
+}

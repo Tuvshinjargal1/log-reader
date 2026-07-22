@@ -1,6 +1,7 @@
 "use client";
 
-import type { Deal } from "@/lib/types";
+import type { CustomerTag, Deal } from "@/lib/types";
+import { customerTagLabel } from "@/lib/extractCustomer";
 import { formatAmount, formatDuration } from "@/lib/labels.mn";
 
 interface DealCardProps {
@@ -9,8 +10,18 @@ interface DealCardProps {
   onSelect: (deal: Deal) => void;
 }
 
+const TAG_STYLE: Record<CustomerTag, string> = {
+  lms: "bg-indigo-100 text-indigo-800",
+  app: "bg-sky-100 text-sky-800",
+  voucher: "bg-amber-100 text-amber-800",
+  coupon: "bg-fuchsia-100 text-fuchsia-800",
+  points: "bg-emerald-100 text-emerald-800",
+  guest: "bg-stone-100 text-stone-500",
+};
+
 export function DealCard({ deal, selected, onSelect }: DealCardProps) {
   const itemCount = deal.basket.reduce((s, i) => s + i.qty, 0);
+  const displayTags = deal.customer.tags.filter((t) => t !== "guest");
 
   return (
     <button
@@ -46,12 +57,33 @@ export function DealCard({ deal, selected, onSelect }: DealCardProps) {
                 {itemCount} бараа
               </span>
             )}
+            {displayTags.map((tag) => (
+              <span
+                key={tag}
+                className={[
+                  "rounded-full px-2 py-0.5 text-xs font-medium",
+                  TAG_STYLE[tag],
+                ].join(" ")}
+              >
+                {customerTagLabel(tag)}
+              </span>
+            ))}
           </div>
           <div className="mt-1 text-sm text-stone-500">
             {deal.date ? `${deal.date} · ` : ""}
             {deal.startTime.slice(0, 8)} → {deal.endTime.slice(0, 8)}
             <span className="ml-2">({formatDuration(deal.durationMs)})</span>
           </div>
+          {(deal.customer.name || deal.customer.phone) && (
+            <div className="mt-1 text-sm text-stone-600">
+              {deal.customer.name ?? "Хэрэглэгч"}
+              {deal.customer.phone && (
+                <span className="ml-1 font-mono text-xs text-stone-400">
+                  {deal.customer.phone}
+                </span>
+              )}
+            </div>
+          )}
           {deal.salesNo && (
             <div className="mt-1 truncate font-mono text-xs text-stone-400">
               {deal.salesNo}

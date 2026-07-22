@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { UploadZone } from "@/components/UploadZone";
 import { FileSummary } from "@/components/FileSummary";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
@@ -15,7 +15,7 @@ import {
 } from "@/lib/parseFile";
 import { buildParsedLog } from "@/lib/buildDeals";
 import { DEFAULT_FILTERS } from "@/lib/filter";
-import type { Deal, LogFiltersState, ParsedLog } from "@/lib/types";
+import type { CustomerTag, Deal, LogFiltersState, ParsedLog } from "@/lib/types";
 
 export default function Home() {
   const [data, setData] = useState<ParsedLog | null>(null);
@@ -24,7 +24,9 @@ export default function Home() {
   const [filters, setFilters] = useState<LogFiltersState>(DEFAULT_FILTERS);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [tab, setTab] = useState<AppTab>("deals");
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
   const [hourFilter, setHourFilter] = useState<string | null>(null);
+  const [customerFilter, setCustomerFilter] = useState<CustomerTag | null>(null);
 
   const handleFiles = useCallback(async (files: File[]) => {
     setBusy(true);
@@ -41,7 +43,9 @@ export default function Home() {
       setData(parsed);
       setFilters({ ...DEFAULT_FILTERS });
       setSelectedDealId(null);
+      setDateFilter(null);
       setHourFilter(null);
+      setCustomerFilter(null);
       setTab("deals");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Файл боловсруулахад алдаа гарлаа");
@@ -68,8 +72,17 @@ export default function Home() {
 
   const handleJumpToDeal = useCallback((deal: Deal) => {
     setSelectedDealId(deal.id);
+    if (deal.date) setDateFilter(deal.date);
     setHourFilter(deal.startTime.slice(0, 2));
     setFilters((f) => ({ ...f, dealEntryIds: deal.entryIds }));
+    setTab("deals");
+  }, []);
+
+  const handleSelectDate = useCallback((date: string) => {
+    setDateFilter(date);
+    setHourFilter(null);
+    setSelectedDealId(null);
+    setFilters((f) => ({ ...f, dealEntryIds: null }));
     setTab("deals");
   }, []);
 
@@ -80,28 +93,29 @@ export default function Home() {
     setTab("deals");
   }, []);
 
+  const handleClearDealLogFilter = useCallback(() => {
+    setSelectedDealId(null);
+    setFilters((f) => ({ ...f, dealEntryIds: null }));
+  }, []);
+
   const handleClear = useCallback(() => {
     setData(null);
     setFilters({ ...DEFAULT_FILTERS });
     setSelectedDealId(null);
+    setDateFilter(null);
     setHourFilter(null);
+    setCustomerFilter(null);
     setError(null);
     setTab("deals");
   }, []);
 
+  const activeDeal = useMemo(() => {
+    if (!data || !filters.dealEntryIds) return null;
+    return data.deals.find((d) => d.id === selectedDealId) ?? null;
+  }, [data, filters.dealEntryIds, selectedDealId]);
+
   return (
     <div className="min-h-full bg-stone-100 text-stone-900">
-      <header className="border-b border-stone-200 bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6">
-          <h1 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
-            SmartPOS Log Reader
-          </h1>
-          <p className="mt-0.5 text-sm text-stone-500">
-            GS25 POS лог файлыг хялбар унших хэрэгсэл
-          </p>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-5xl space-y-4 px-4 py-6 sm:px-6">
         {!data && <UploadZone onFiles={handleFiles} busy={busy} />}
 
@@ -124,10 +138,22 @@ export default function Home() {
               active={tab}
               onChange={setTab}
               dealCount={
-                hourFilter
-                  ? data.deals.filter((d) => d.startTime.slice(0, 2) === hourFilter)
-                      .length
-                  : data.dealCount
+                data.deals.filter((d) => {
+                  if (dateFilter && d.date !== dateFilter) return false;
+                  if (
+                    hourFilter &&
+                    d.startTime.slice(0, 2) !== hourFilter
+                  ) {
+                    return false;
+                  }
+                  if (
+                    customerFilter &&
+                    !d.customer.tags.includes(customerFilter)
+                  ) {
+                    return false;
+                  }
+                  return true;
+                }).length
               }
               errorCount={data.errorCount}
             />
@@ -135,7 +161,9 @@ export default function Home() {
             {tab === "overview" && (
               <OverviewStats
                 deals={data.deals}
+                dateFilter={dateFilter}
                 hourFilter={hourFilter}
+                onSelectDate={handleSelectDate}
                 onSelectHour={handleSelectHour}
                 onSelectDeal={handleJumpToDeal}
               />
@@ -145,8 +173,12 @@ export default function Home() {
               <DealTimeline
                 deals={data.deals}
                 selectedId={selectedDealId}
+                dateFilter={dateFilter}
                 hourFilter={hourFilter}
+                customerFilter={customerFilter}
+                onDateFilter={setDateFilter}
                 onHourFilter={setHourFilter}
+                onCustomerFilter={setCustomerFilter}
                 onSelect={handleSelectDeal}
                 onShowRawLog={handleShowRawLog}
               />
@@ -157,6 +189,8 @@ export default function Home() {
                 entries={data.entries}
                 filters={filters}
                 onFiltersChange={setFilters}
+                activeDeal={activeDeal}
+                onClearDealFilter={handleClearDealLogFilter}
               />
             )}
           </>

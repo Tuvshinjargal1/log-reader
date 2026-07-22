@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { LogEntry, LogFiltersState } from "@/lib/types";
+import { Fragment, useMemo, useState } from "react";
+import type { Deal, EventKind, LogEntry, LogFiltersState } from "@/lib/types";
 import { filterEntries, tryPrettyJson, uniqueModules } from "@/lib/filter";
 import {
   eventLabel,
+  formatAmount,
   moduleLabel,
   priorityLabel,
 } from "@/lib/labels.mn";
@@ -17,9 +18,17 @@ interface DetailLogProps {
   entries: LogEntry[];
   filters: LogFiltersState;
   onFiltersChange: (f: LogFiltersState) => void;
+  activeDeal?: Deal | null;
+  onClearDealFilter?: () => void;
 }
 
-export function DetailLog({ entries, filters, onFiltersChange }: DetailLogProps) {
+export function DetailLog({
+  entries,
+  filters,
+  onFiltersChange,
+  activeDeal,
+  onClearDealFilter,
+}: DetailLogProps) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [page, setPage] = useState(0);
 
@@ -43,6 +52,40 @@ export function DetailLog({ entries, filters, onFiltersChange }: DetailLogProps)
 
   return (
     <section className="space-y-3">
+      {activeDeal && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3">
+          <div className="min-w-0 text-sm">
+            <span className="font-semibold text-teal-900">
+              #{activeDeal.index} борлуулалтын лог
+            </span>
+            {activeDeal.salesNo && (
+              <span className="ml-2 font-mono text-xs text-teal-700">
+                {activeDeal.salesNo}
+              </span>
+            )}
+            <span className="ml-2 text-teal-800">
+              {activeDeal.date ? `${activeDeal.date} · ` : ""}
+              {activeDeal.startTime.slice(0, 8)}
+              {activeDeal.amount != null && (
+                <> · {formatAmount(activeDeal.amount)}</>
+              )}
+            </span>
+            <span className="ml-2 text-teal-600">
+              {filtered.length.toLocaleString("mn-MN")} мөр
+            </span>
+          </div>
+          {onClearDealFilter && (
+            <button
+              type="button"
+              onClick={onClearDealFilter}
+              className="shrink-0 rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-sm text-teal-800 hover:bg-teal-100"
+            >
+              Шүүлт цуцлах
+            </button>
+          )}
+        </div>
+      )}
+
       <LogFilters
         filters={filters}
         modules={modules}
@@ -59,14 +102,21 @@ export function DetailLog({ entries, filters, onFiltersChange }: DetailLogProps)
         ) : (
           <ul className="divide-y divide-stone-100">
             {pageItems.map((entry) => (
-              <LogRow
-                key={entry.id}
-                entry={entry}
-                open={expanded === entry.id}
-                onToggle={() =>
-                  setExpanded((id) => (id === entry.id ? null : entry.id))
-                }
-              />
+              <Fragment key={entry.id}>
+                {entry.eventKind === "deal_start" && (
+                  <li className="bg-teal-600 px-3 py-1.5 text-center text-xs font-semibold tracking-wide text-white">
+                    ——— Борлуулалт эхэлсэн ———
+                  </li>
+                )}
+                <LogRow
+                  entry={entry}
+                  open={expanded === entry.id}
+                  highlight={!!activeDeal}
+                  onToggle={() =>
+                    setExpanded((id) => (id === entry.id ? null : entry.id))
+                  }
+                />
+              </Fragment>
             ))}
           </ul>
         )}
@@ -102,25 +152,30 @@ export function DetailLog({ entries, filters, onFiltersChange }: DetailLogProps)
 function LogRow({
   entry,
   open,
+  highlight,
   onToggle,
 }: {
   entry: LogEntry;
   open: boolean;
+  highlight: boolean;
   onToggle: () => void;
 }) {
   const fullText = [entry.message, ...entry.continuation].join("\n");
   const pretty = open ? tryPrettyJson(fullText) : null;
   const hasReceiptDump =
     open && entry.continuation.some((l) => /^\[(PLG|NOR|BLD|EBT)\]/i.test(l));
+  const kindStyle = eventKindStyle(entry.eventKind, entry.isError);
+  const isDealStart = entry.eventKind === "deal_start";
 
   return (
-    <li>
+    <li className={kindStyle.row}>
       <button
         type="button"
         onClick={onToggle}
         className={[
-          "flex w-full gap-3 px-3 py-2.5 text-left hover:bg-stone-50",
-          entry.isError ? "bg-red-50/60" : "",
+          "flex w-full gap-3 border-l-4 px-3 py-2.5 text-left hover:brightness-[0.98]",
+          kindStyle.border,
+          isDealStart ? "py-3" : "",
         ].join(" ")}
       >
         <span className="w-20 shrink-0 font-mono text-xs text-stone-400">
@@ -137,11 +192,21 @@ function LogRow({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="text-sm font-medium text-stone-700">
+            <span
+              className={[
+                "text-sm font-medium",
+                isDealStart ? "text-teal-900" : "text-stone-700",
+              ].join(" ")}
+            >
               {moduleLabel(entry.shortClass)}
             </span>
             {entry.eventKind !== "other" && (
-              <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-500">
+              <span
+                className={[
+                  "rounded px-1.5 py-0.5 text-xs font-medium",
+                  kindStyle.badge,
+                ].join(" ")}
+              >
                 {eventLabel(entry.eventKind)}
               </span>
             )}
@@ -149,7 +214,11 @@ function LogRow({
           <p
             className={[
               "truncate text-sm",
-              entry.isError ? "text-red-700" : "text-stone-600",
+              entry.isError
+                ? "text-red-700"
+                : isDealStart
+                  ? "font-medium text-teal-800"
+                  : "text-stone-600",
             ].join(" ")}
           >
             {entry.message || "(үргэлжлэл)"}
@@ -172,6 +241,12 @@ function LogRow({
               <span className="text-stone-400">Файл: </span>
               {entry.fileName} :{entry.lineNumber}
             </div>
+            {highlight && (
+              <div>
+                <span className="text-stone-400">Төрөл: </span>
+                {eventLabel(entry.eventKind)}
+              </div>
+            )}
           </div>
           {hasReceiptDump ? (
             <ReceiptView lines={entry.continuation} />
@@ -184,6 +259,72 @@ function LogRow({
       )}
     </li>
   );
+}
+
+function eventKindStyle(
+  kind: EventKind,
+  isError: boolean,
+): { border: string; row: string; badge: string } {
+  if (isError || kind === "exception" || kind === "http_error") {
+    return {
+      border: "border-red-500",
+      row: "bg-red-50/70",
+      badge: "bg-red-100 text-red-800",
+    };
+  }
+  switch (kind) {
+    case "deal_start":
+      return {
+        border: "border-teal-500",
+        row: "bg-teal-50/80",
+        badge: "bg-teal-200 text-teal-900",
+      };
+    case "scan":
+      return {
+        border: "border-sky-400",
+        row: "bg-sky-50/50",
+        badge: "bg-sky-100 text-sky-800",
+      };
+    case "payment":
+    case "tender":
+      return {
+        border: "border-emerald-500",
+        row: "bg-emerald-50/50",
+        badge: "bg-emerald-100 text-emerald-800",
+      };
+    case "ebarimt":
+      return {
+        border: "border-indigo-500",
+        row: "bg-indigo-50/50",
+        badge: "bg-indigo-100 text-indigo-800",
+      };
+    case "receipt":
+      return {
+        border: "border-stone-400",
+        row: "bg-stone-50",
+        badge: "bg-stone-200 text-stone-700",
+      };
+    case "popup":
+    case "display_message":
+      return {
+        border: "border-amber-400",
+        row: "",
+        badge: "bg-amber-100 text-amber-800",
+      };
+    case "api_send":
+    case "api_recv":
+      return {
+        border: "border-violet-400",
+        row: "",
+        badge: "bg-violet-100 text-violet-800",
+      };
+    default:
+      return {
+        border: "border-transparent",
+        row: "",
+        badge: "bg-stone-100 text-stone-500",
+      };
+  }
 }
 
 function priorityColor(p: number): string {

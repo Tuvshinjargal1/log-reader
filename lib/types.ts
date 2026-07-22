@@ -72,6 +72,25 @@ export interface ErrorSummary {
   location?: string;
 }
 
+export interface CustomerInfo {
+  tags: CustomerTag[];
+  name?: string;
+  phone?: string;
+  customerId?: string;
+  pointsEarned?: number;
+  pointsRedeemed?: number;
+  vouchersUsed?: { id?: string; amount?: number }[];
+  couponsUsed?: { name?: string; discountApplied?: number }[];
+}
+
+export type CustomerTag =
+  | "lms"
+  | "app"
+  | "voucher"
+  | "coupon"
+  | "points"
+  | "guest";
+
 export interface Deal {
   id: string;
   index: number;
@@ -92,6 +111,7 @@ export interface Deal {
   ebarimt?: EbarimtInfo;
   errors: ErrorSummary[];
   receiptLines?: string[];
+  customer: CustomerInfo;
 }
 
 export interface ParsedFileMeta {

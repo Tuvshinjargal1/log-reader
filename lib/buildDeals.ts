@@ -19,6 +19,7 @@ import {
   extractEbarimtInfo,
   extractPaymentInfo,
 } from "./extractBasket";
+import { extractCustomerInfo } from "./extractCustomer";
 import { explainError, technicalName } from "./errorExplain.mn";
 import { paymentLabel } from "./labels.mn";
 import { timeToMs } from "./parseLine";
@@ -185,6 +186,12 @@ export function buildDeals(entries: LogEntry[]): Deal[] {
       timeToMs(endEntry.time) - timeToMs(startEntry.time),
     );
 
+    const customer = extractCustomerInfo(
+      slice.map((e) =>
+        [e.method, e.message, ...e.continuation].join("\n"),
+      ),
+    );
+
     deals.push({
       id: `deal-${d + 1}-${startEntry.id}`,
       index: d + 1,
@@ -205,6 +212,7 @@ export function buildDeals(entries: LogEntry[]): Deal[] {
       ebarimt,
       errors,
       receiptLines,
+      customer,
     });
   }
 

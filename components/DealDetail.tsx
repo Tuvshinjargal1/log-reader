@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Deal } from "@/lib/types";
+import { customerTagLabel } from "@/lib/extractCustomer";
 import { eventIcon, eventIconColor } from "@/lib/eventIcons";
 import { formatAmount } from "@/lib/labels.mn";
 import { ReceiptView } from "./ReceiptView";
@@ -46,6 +47,82 @@ export function DealDetail({ deal, onShowRawLog }: DealDetailProps) {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* Customer / LMS */}
+      {deal.customer.tags.length > 0 && !deal.customer.tags.includes("guest") && (
+        <section className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-4">
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-indigo-600">
+            Хэрэглэгч / LMS
+          </h3>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {deal.customer.tags
+              .filter((t) => t !== "guest")
+              .map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-indigo-800 ring-1 ring-indigo-200"
+                >
+                  {customerTagLabel(tag)}
+                </span>
+              ))}
+          </div>
+          <dl className="space-y-1 text-sm">
+            <Row label="Нэр" value={deal.customer.name} />
+            <Row label="Утас" value={deal.customer.phone} mono />
+            <Row label="ID" value={deal.customer.customerId} mono />
+            {deal.customer.pointsEarned != null && deal.customer.pointsEarned > 0 && (
+              <Row
+                label="Оноо +"
+                value={`+${deal.customer.pointsEarned.toLocaleString("mn-MN")}`}
+                valueClass="text-emerald-700 font-medium"
+              />
+            )}
+            {deal.customer.pointsRedeemed != null &&
+              deal.customer.pointsRedeemed > 0 && (
+                <Row
+                  label="Оноо −"
+                  value={`−${deal.customer.pointsRedeemed.toLocaleString("mn-MN")}`}
+                  valueClass="text-amber-700 font-medium"
+                />
+              )}
+          </dl>
+          {deal.customer.couponsUsed && deal.customer.couponsUsed.length > 0 && (
+            <ul className="mt-2 space-y-1 text-sm text-stone-700">
+              {deal.customer.couponsUsed.map((c, i) => (
+                <li key={i}>
+                  Купон: {c.name ?? "нэргүй"}
+                  {c.discountApplied != null && (
+                    <span className="text-stone-500">
+                      {" "}
+                      (−{c.discountApplied.toLocaleString("mn-MN")} ₮)
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {deal.customer.vouchersUsed && deal.customer.vouchersUsed.length > 0 && (
+            <ul className="mt-2 space-y-1 text-sm text-stone-700">
+              {deal.customer.vouchersUsed.map((v, i) => (
+                <li key={i}>
+                  Voucher
+                  {v.amount != null && (
+                    <span className="font-medium">
+                      {" "}
+                      {v.amount.toLocaleString("mn-MN")} ₮
+                    </span>
+                  )}
+                  {v.id && (
+                    <span className="ml-1 font-mono text-xs text-stone-400">
+                      {v.id.slice(0, 12)}…
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
