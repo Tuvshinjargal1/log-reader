@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import sql from "mssql";
 import type { HourlyRow, PosAnalyzeResult } from "@/lib/load/types";
+import { HOURLY_TX_QUERY } from "@/lib/pos/queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,16 +27,6 @@ function posConfig(ip: string): sql.config {
   };
 }
 
-const AGG_QUERY = `
-  SELECT sale_dt,
-         DATEPART(HOUR, sell_end_dttm) AS hr,
-         COUNT(*) AS tx_cnt,
-         SUM(CAST(sum_amt AS BIGINT)) AS amt
-    FROM TP_TR_HDR WITH (NOLOCK)
-   WHERE sale_dt BETWEEN @from AND @to
-     AND deal_sp_cd = '01'
-   GROUP BY sale_dt, DATEPART(HOUR, sell_end_dttm)
-`;
 
 async function readBizplCd(pool: sql.ConnectionPool): Promise<string | undefined> {
   const queries = [
@@ -70,7 +61,7 @@ async function analyzePos(
       .input("from", sql.VarChar(8), from)
       .input("to", sql.VarChar(8), to)
       .query<{ sale_dt: string; hr: number; tx_cnt: number; amt: number | null }>(
-        AGG_QUERY,
+        HOURLY_TX_QUERY,
       );
 
     const rows: HourlyRow[] = res.recordset

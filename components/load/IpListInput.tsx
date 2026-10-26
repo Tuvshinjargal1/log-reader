@@ -124,7 +124,7 @@ export function IpListInput({ value, onChange, disabled }: IpListInputProps) {
         {parsed.length > 0 ? (
           <>
             <span className="font-semibold text-teal-700">{parsed.length}</span> IP
-            танигдлаа. Quote (`"172.x.x.x"`), CSV, таслалтай жагсаалтыг дэмжинэ.
+            танигдлаа. Quote (`&quot;172.x.x.x&quot;`), CSV, таслалтай жагсаалтыг дэмжинэ.
           </>
         ) : (
           'IP хаяг оруулаагүй байна. Жишээ: "172.25.20.35" эсвэл энгийн IP.'

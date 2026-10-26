@@ -3,6 +3,7 @@ import type {
   Gs25Branch,
   PosAnalyzeResult,
 } from "./types";
+import { daysBetween } from "@/lib/engine/util";
 
 /** "V5291" → "5291", хоосон тэгүүдийг хасаж жигдэлнэ */
 export function normalizeCode(bizplCd: string): string {
@@ -39,6 +40,7 @@ function findBranch(
 export function buildBranchLoads(
   results: PosAnalyzeResult[],
   branches: Gs25Branch[],
+  window?: { from: string; to: string },
 ): BranchLoad[] {
   const branchByCode = new Map<string, Gs25Branch>();
   for (const b of branches) {
@@ -74,8 +76,12 @@ export function buildBranchLoads(
   for (const [bizplCd, g] of groups) {
     const days = new Set<string>();
     const hourlyTx = new Array<number>(24).fill(0);
+    const byDay = new Map<string, number>();
     let totalTx = 0;
     let totalAmount = 0;
+    let peakHourMaxTx = 0;
+    let peakHourMaxHour: number | null = null;
+    let peakHourMaxDate: string | null = null;
 
     for (const [k, v] of g.byDayHour) {
       const [saleDt, hourStr] = k.split("|");
@@ -83,11 +89,38 @@ export function buildBranchLoads(
       days.add(saleDt);
       totalTx += v.tx;
       totalAmount += v.amt;
+      byDay.set(saleDt, (byDay.get(saleDt) ?? 0) + v.tx);
       if (hour >= 0 && hour < 24) hourlyTx[hour] += v.tx;
+      if (v.tx > peakHourMaxTx) {
+        peakHourMaxTx = v.tx;
+        peakHourMaxHour = hour;
+        peakHourMaxDate = saleDt;
+      }
     }
 
-    const dayCount = Math.max(days.size, 1);
-    const hourlyAvgTx = hourlyTx.map((t) => t / dayCount);
+    let peakDayTx = 0;
+    let peakDayDate: string | null = null;
+    let latestDay: string | null = null;
+    let latestDayTx = 0;
+    for (const [d, tx] of byDay) {
+      if (tx > peakDayTx) {
+        peakDayTx = tx;
+        peakDayDate = d;
+      }
+      if (!latestDay || d > latestDay) {
+        latestDay = d;
+        latestDayTx = tx;
+      }
+    }
+
+    const dailyTx = [...byDay.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, txCount]) => ({ date, txCount }));
+
+    const calendarDays = window
+      ? Math.max(1, daysBetween(window.from, window.to) + 1)
+      : Math.max(days.size, 1);
+    const hourlyAvgTx = hourlyTx.map((t) => t / calendarDays);
 
     let peakHour: number | null = null;
     let peakHourAvgTx = 0;
@@ -105,11 +138,19 @@ export function buildBranchLoads(
       ips: g.ips,
       totalTx,
       totalAmount,
-      dayCount: days.size,
-      avgDailyTx: totalTx / dayCount,
-      avgDailyAmount: totalAmount / dayCount,
+      dayCount: calendarDays,
+      avgDailyTx: totalTx / calendarDays,
+      avgDailyAmount: totalAmount / calendarDays,
       peakHour,
       peakHourAvgTx,
+      peakHourMaxTx,
+      peakHourMaxDate,
+      peakHourMaxHour,
+      peakDayTx,
+      peakDayDate,
+      latestDayTx,
+      latestDay,
+      dailyTx,
       hourlyAvgTx,
       score: 0,
       branch: findBranch(branchByCode, bizplCd),

@@ -1,4 +1,5 @@
 /** Сар → 7 хоног → өдөр гэсэн шатлалтай хугацааны сонголт */
+import { rollingMonthRange } from "@/lib/engine/util";
 export interface PeriodSelection {
   month: string; // "YYYY-MM"
   week: number | null; // сарын доторх 7 хоногийн индекс (0-ээс)
@@ -72,27 +73,32 @@ export function weekDays(week: WeekRange): Date[] {
   return days;
 }
 
-/** Сонголтоос from/to (YYYYMMDD, inclusive) тооцно */
-export function selectionRange(sel: PeriodSelection): { from: string; to: string } {
+/** Сонголтын төгсгөл өдөр (asOf). Цонх үргэлж asOf − 1 сар. */
+export function selectionAsOf(sel: PeriodSelection): string {
   if (sel.day) {
-    const d = new Date(sel.day + "T00:00:00");
-    const ymd = toYmd(d);
-    return { from: ymd, to: ymd };
+    return toYmd(new Date(sel.day + "T00:00:00"));
   }
   const weeks = monthWeeks(sel.month);
   if (sel.week !== null && weeks[sel.week]) {
-    const w = weeks[sel.week];
-    return { from: toYmd(w.from), to: toYmd(w.to) };
+    return toYmd(weeks[sel.week].to);
   }
   const [y, m] = sel.month.split("-").map(Number);
-  return { from: toYmd(new Date(y, m - 1, 1)), to: toYmd(new Date(y, m, 0)) };
+  const lastOfMonth = toYmd(new Date(y, m, 0));
+  const today = toYmd(new Date());
+  return lastOfMonth < today ? lastOfMonth : today;
+}
+
+/** Сонголтоос from/to (YYYYMMDD, inclusive) — бүгд now−1month цонх */
+export function selectionRange(sel: PeriodSelection): { from: string; to: string } {
+  return rollingMonthRange(selectionAsOf(sel));
 }
 
 export function selectionLabel(sel: PeriodSelection): string {
-  if (sel.day) return `${sel.day} өдөр`;
-  if (sel.week !== null) {
-    const w = monthWeeks(sel.month)[sel.week];
-    if (w) return `${sel.month} сарын ${w.label} долоо хоног`;
-  }
-  return `${sel.month} сар (бүтэн)`;
+  const { from, to } = selectionRange(sel);
+  return `${prettyYmd(from)} → ${prettyYmd(to)} (сүүлийн 1 сар)`;
+}
+
+function prettyYmd(ymd: string): string {
+  if (!/^\d{8}$/.test(ymd)) return ymd;
+  return `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
 }

@@ -16,10 +16,13 @@ import {
 } from "@/lib/load/period";
 import type {
   AnalyzeResponse,
+  BranchLoad,
   Gs25Branch,
   PosAnalyzeResult,
 } from "@/lib/load/types";
-import { formatAmount } from "@/lib/labels.mn";
+import { TxStatsPanel } from "@/components/sms/TxStatsPanel";
+import type { TxStats } from "@/lib/pos/txStats";
+import { daysBetween } from "@/lib/engine/util";
 
 const LoadMap = dynamic(() => import("@/components/load/LoadMap"), {
   ssr: false,
@@ -50,6 +53,10 @@ export default function LoadPage() {
   );
   const [results, setResults] = useState<PosAnalyzeResult[]>([]);
   const [analyzedLabel, setAnalyzedLabel] = useState<string | null>(null);
+  const [analyzedWindow, setAnalyzedWindow] = useState<{
+    from: string;
+    to: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedBizplCd, setSelectedBizplCd] = useState<string | null>(null);
   const [showFailed, setShowFailed] = useState(false);
@@ -97,6 +104,7 @@ export default function LoadPage() {
     setResults([]);
     setSelectedBizplCd(null);
     setAnalyzedLabel(null);
+    setAnalyzedWindow(null);
     setProgress({ done: 0, total: ips.length });
 
     const collected: PosAnalyzeResult[] = [];
@@ -115,6 +123,7 @@ export default function LoadPage() {
         setProgress({ done: Math.min(i + CHUNK_SIZE, ips.length), total: ips.length });
       }
       setAnalyzedLabel(selectionLabel(period));
+      setAnalyzedWindow({ from, to });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Шинжилгээ хийхэд алдаа гарлаа");
     } finally {
@@ -124,8 +133,8 @@ export default function LoadPage() {
   }, [ipText, period]);
 
   const loads = useMemo(
-    () => buildBranchLoads(results, branches ?? []),
-    [results, branches],
+    () => buildBranchLoads(results, branches ?? [], analyzedWindow ?? undefined),
+    [results, branches, analyzedWindow],
   );
   const suggestions = useMemo(
     () => suggestLocations(loads, branches ?? []),
@@ -138,16 +147,26 @@ export default function LoadPage() {
   const selectedLoad = loads.find((l) => l.bizplCd === selectedBizplCd) ?? null;
 
   const totalTx = loads.reduce((s, l) => s + l.totalTx, 0);
-  const totalAmount = loads.reduce((s, l) => s + l.totalAmount, 0);
+  const avgDailySum = loads.reduce((s, l) => s + l.avgDailyTx, 0);
   const matchedCount = loads.filter((l) => l.branch).length;
+
+  const txSectionStats = useMemo((): TxStats | null => {
+    if (loads.length === 0) return null;
+    const src = selectedLoad ?? fleetAsLoad(loads);
+    return branchLoadToTxStats(src);
+  }, [loads, selectedLoad]);
 
   return (
     <div className="min-h-full bg-stone-100 text-stone-900">
       <main className="mx-auto max-w-6xl space-y-4 px-4 py-6 sm:px-6">
         <section className="rounded-xl border border-stone-200 bg-white p-4 sm:p-5">
-          <h2 className="mb-4 text-base font-bold text-stone-900">
-            Салбарын ачааллын шинжилгээ
+          <h2 className="mb-1 text-base font-bold text-stone-900">
+            Салбарын гүйлгээний газрын зураг
           </h2>
+          <p className="mb-4 text-sm text-stone-500">
+            POS-ийн IP-үүдийг оруулж шинжилнэ. Дөрвөн үзүүлэлт бүгд өнөөдрөөс
+            1 сар ухарсан цонхонд (now − 1 month) чек (TP_TR_HDR) тус бүрээр тоологдоно.
+          </p>
           <div className="grid gap-5 lg:grid-cols-2">
             <IpListInput value={ipText} onChange={handleIpChange} disabled={running} />
             <PeriodPicker value={period} onChange={setPeriod} disabled={running} />
@@ -205,8 +224,11 @@ export default function LoadPage() {
                 value={String(matchedCount)}
                 tone={matchedCount > 0 ? "ok" : "warn"}
               />
-              <StatCard label="Нийт гүйлгээ" value={totalTx.toLocaleString("mn-MN")} />
-              <StatCard label="Нийт борлуулалт" value={formatAmount(totalAmount)} />
+              <StatCard
+                label="Өдрийн гүйлгээ (дундаж нийлбэр)"
+                value={Math.round(avgDailySum).toLocaleString("mn-MN")}
+              />
+              <StatCard label="Сарын нийт гүйлгээ" value={totalTx.toLocaleString("mn-MN")} />
               <StatCard
                 label="Холбогдоогүй IP"
                 value={String(failed.length)}
@@ -214,10 +236,21 @@ export default function LoadPage() {
               />
             </section>
 
+            {txSectionStats && (
+              <TxStatsPanel
+                stats={txSectionStats}
+                storeName={
+                  selectedLoad
+                    ? (selectedLoad.branch?.name ?? selectedLoad.bizplCd)
+                    : "сонгосон хугацаа — бүх салбар"
+                }
+              />
+            )}
+
             {analyzedLabel && (
               <p className="text-xs text-stone-500">
-                Үр дүн: <b>{analyzedLabel}</b> — том өнгөт дугуй (оноотой) нь танигдсан
-                салбар. Цэнхэр ★ нь шинэ салбар нээх санал. Саарал цэг = шинжлэгдээгүй.
+                Үр дүн: <b>{analyzedLabel}</b> — дугуй дээрх тоо нь өдрийн дундаж гүйлгээ.
+                Цэнхэр ★ нь шинэ салбар нээх санал. Саарал цэг = шинжлэгдээгүй.
               </p>
             )}
 
@@ -327,4 +360,98 @@ function StatCard({
       </div>
     </div>
   );
+}
+
+function branchLoadToTxStats(l: BranchLoad): TxStats {
+  const asOf = l.latestDay ?? "";
+  const from = l.dailyTx[0]?.date ?? asOf;
+  const to = l.dailyTx.at(-1)?.date ?? asOf;
+  const dayCount =
+    l.dayCount > 0
+      ? l.dayCount
+      : from && to
+        ? Math.max(1, daysBetween(from, to) + 1)
+        : 1;
+  return {
+    asOf,
+    avgDailyTx: l.avgDailyTx,
+    dayCount,
+    today: { date: asOf, txCount: l.latestDayTx, amount: 0 },
+    month: {
+      from,
+      to: asOf,
+      txCount: l.totalTx,
+      amount: l.totalAmount,
+    },
+    peakHour:
+      l.peakHourMaxDate != null && l.peakHourMaxHour != null
+        ? {
+            date: l.peakHourMaxDate,
+            hour: l.peakHourMaxHour,
+            txCount: l.peakHourMaxTx,
+            amount: 0,
+          }
+        : null,
+    peakDay: l.peakDayDate
+      ? { date: l.peakDayDate, txCount: l.peakDayTx, amount: 0 }
+      : null,
+    daily: l.dailyTx.map((d) => ({ date: d.date, txCount: d.txCount, amount: 0 })),
+  };
+}
+
+function fleetAsLoad(loads: BranchLoad[]): BranchLoad {
+  const dailyMap = new Map<string, number>();
+  let totalTx = 0;
+  let totalAmount = 0;
+  let peakHourMaxTx = 0;
+  let peakHourMaxDate: string | null = null;
+  let peakHourMaxHour: number | null = null;
+  for (const l of loads) {
+    totalTx += l.totalTx;
+    totalAmount += l.totalAmount;
+    if (l.peakHourMaxTx > peakHourMaxTx) {
+      peakHourMaxTx = l.peakHourMaxTx;
+      peakHourMaxDate = l.peakHourMaxDate;
+      peakHourMaxHour = l.peakHourMaxHour;
+    }
+    for (const d of l.dailyTx) {
+      dailyMap.set(d.date, (dailyMap.get(d.date) ?? 0) + d.txCount);
+    }
+  }
+  const dailyTx = [...dailyMap.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, txCount]) => ({ date, txCount }));
+  let peakDayTx = 0;
+  let peakDayDate: string | null = null;
+  for (const d of dailyTx) {
+    if (d.txCount > peakDayTx) {
+      peakDayTx = d.txCount;
+      peakDayDate = d.date;
+    }
+  }
+  const latest = dailyTx.at(-1) ?? null;
+  const dayCount = Math.max(...loads.map((l) => l.dayCount), 1);
+  return {
+    bizplCd: "",
+    code: "",
+    ips: [],
+    totalTx,
+    totalAmount,
+    dayCount,
+    avgDailyTx: totalTx / dayCount,
+    avgDailyAmount: totalAmount / dayCount,
+    peakHour: peakHourMaxHour,
+    peakHourAvgTx: 0,
+    peakHourMaxTx,
+    peakHourMaxDate,
+    peakHourMaxHour,
+    peakDayTx,
+    peakDayDate,
+    latestDayTx: latest?.txCount ?? 0,
+    latestDay: latest?.date ?? null,
+    dailyTx,
+    hourlyAvgTx: [],
+    score: 0,
+    branch: null,
+  };
 }

@@ -25,6 +25,9 @@ export function PeriodPicker({ value, onChange, disabled }: PeriodPickerProps) {
       <label className="block text-sm font-semibold uppercase tracking-wide text-stone-500">
         Хугацаа
       </label>
+      <p className="text-xs text-stone-400">
+        Шинжилгээ үргэлж сонгосон өдрөөс 1 сар ухарсан цонхонд (now − 1 month).
+      </p>
 
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -49,7 +52,7 @@ export function PeriodPicker({ value, onChange, disabled }: PeriodPickerProps) {
               : "border border-stone-300 bg-white text-stone-600 hover:bg-stone-50",
           ].join(" ")}
         >
-          Бүтэн сар
+          Сүүлийн 1 сар
         </button>
       </div>
 

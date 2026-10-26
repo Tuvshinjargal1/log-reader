@@ -1,7 +1,7 @@
 "use client";
 
 import type { BranchLoad } from "@/lib/load/types";
-import { formatAmount } from "@/lib/labels.mn";
+import { ymdToIso } from "@/lib/sms/suggest";
 
 interface BranchRankingProps {
   loads: BranchLoad[];
@@ -9,10 +9,8 @@ interface BranchRankingProps {
   onSelect: (bizplCd: string) => void;
 }
 
-export function scoreColor(score: number): string {
-  if (score >= 70) return "bg-red-100 text-red-700";
-  if (score >= 40) return "bg-amber-100 text-amber-700";
-  return "bg-emerald-100 text-emerald-700";
+function fmtHour(h: number): string {
+  return `${String(h).padStart(2, "0")}:00`;
 }
 
 export function BranchRanking({
@@ -26,19 +24,22 @@ export function BranchRanking({
     <div className="rounded-xl border border-stone-200 bg-white">
       <div className="border-b border-stone-100 px-4 py-3">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-stone-500">
-          Салбаруудын ачааллын зэрэглэл
+          Салбаруудын гүйлгээний ачаалал
         </h3>
+        <p className="mt-0.5 text-xs text-stone-400">
+          POS IP-ээс уншсан чекийн тоо (сүүлийн 1 сар). Салбар дээр дарж зураг/цагийн задаргааг харна.
+        </p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="text-left text-xs uppercase tracking-wide text-stone-400">
               <th className="px-4 py-2 font-medium">#</th>
               <th className="px-2 py-2 font-medium">Салбар</th>
-              <th className="px-2 py-2 text-right font-medium">Өдрийн дундаж гүйлгээ</th>
-              <th className="px-2 py-2 text-right font-medium">Оргил цаг</th>
-              <th className="px-2 py-2 text-right font-medium">Нийт дүн</th>
-              <th className="px-4 py-2 text-right font-medium">Оноо</th>
+              <th className="px-2 py-2 text-right font-medium">Өдрийн гүйлгээ</th>
+              <th className="px-2 py-2 text-right font-medium">Сарын нийт</th>
+              <th className="px-2 py-2 text-right font-medium">Нэг цагийн хамгийн их</th>
+              <th className="px-2 py-2 text-right font-medium">Өдрийн хамгийн их</th>
             </tr>
           </thead>
           <tbody>
@@ -61,6 +62,9 @@ export function BranchRanking({
                     <span className="font-mono text-xs text-stone-400">
                       {l.bizplCd}
                     </span>
+                    <div className="font-mono text-[10px] text-stone-400">
+                      {l.ips.join(", ")}
+                    </div>
                     {!l.branch && (
                       <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">
                         зурагтай тулгагдаагүй
@@ -68,25 +72,31 @@ export function BranchRanking({
                     )}
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-stone-700">
-                    {l.avgDailyTx.toFixed(0)}
+                    {Math.round(l.avgDailyTx).toLocaleString("mn-MN")}
+                    <div className="text-[10px] font-normal text-stone-400">
+                      өдрийн дундаж
+                    </div>
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-stone-700">
-                    {l.peakHour !== null
-                      ? `${String(l.peakHour).padStart(2, "0")}:00 (${l.peakHourAvgTx.toFixed(0)})`
+                    {l.totalTx.toLocaleString("mn-MN")}
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums text-stone-700">
+                    {l.peakHourMaxTx > 0
+                      ? l.peakHourMaxTx.toLocaleString("mn-MN")
                       : "—"}
+                    {l.peakHourMaxDate != null && l.peakHourMaxHour != null && (
+                      <div className="text-[10px] font-normal text-stone-400">
+                        {ymdToIso(l.peakHourMaxDate)} {fmtHour(l.peakHourMaxHour)}
+                      </div>
+                    )}
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-stone-700">
-                    {formatAmount(l.totalAmount)}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <span
-                      className={[
-                        "inline-block rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
-                        scoreColor(l.score),
-                      ].join(" ")}
-                    >
-                      {l.score}
-                    </span>
+                    {l.peakDayTx > 0 ? l.peakDayTx.toLocaleString("mn-MN") : "—"}
+                    {l.peakDayDate && (
+                      <div className="text-[10px] font-normal text-stone-400">
+                        {ymdToIso(l.peakDayDate)}
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

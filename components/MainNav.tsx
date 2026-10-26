@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
-  { href: "/", label: "Лог унших" },
-  { href: "/load", label: "Салбарын ачаалал" },
-  { href: "/sms", label: "SMS auto manager" },
+  { href: "/logs", label: "Лог унших" },
+  { href: "/load", label: "Газрын зураг" },
+  { href: "/sms", label: "Нөхөн дүүргэлт" },
 ];
 
 export function MainNav() {

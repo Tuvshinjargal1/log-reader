@@ -1,0 +1,42 @@
+{
+  "sms": {
+    "msgs": 451,
+    "segs": 1253,
+    "delivered": 451
+  },
+  "smsCols": "CREATE TABLE sms_outbox (\n  id           INTEGER PRIMARY KEY AUTOINCREMENT,\n  order_id     INTEGER REFERENCES orders(id) ON DELETE CASCADE,\n  store_id     INTEGER REFERENCES stores(id) ON DELETE CASCADE,\n  to_number    TEXT    NOT NULL,\n  segments     INTEGER NOT NULL DEFAULT 1,\n  body         TEXT    NOT NULL,\n  status       TEXT    NOT NULL DEFAULT 'sent',   -- queued|sent|delivered|failed\n  gateway_ref  TEXT,\n  created_at   TEXT    NOT NULL DEFAULT (datetime('now')),\n  delivered_at TEXT,\n  error        TEXT\n)",
+  "orders": {
+    "n": 944,
+    "qty": 732481,
+    "amt": 3486118700,
+    "submitted": 938
+  },
+  "lines": {
+    "n": 42658,
+    "touched": 5832
+  },
+  "alerts": [
+    {
+      "severity": "critical",
+      "c": 5
+    },
+    {
+      "severity": "warn",
+      "c": 7
+    }
+  ],
+  "ops": {
+    "c": 3
+  },
+  "schedules": [
+    {
+      "id": 1,
+      "enabled": 1,
+      "time_of_day": "09:00",
+      "auto_submit": 1,
+      "last_run_at": "2026-08-19T01:00:00.000Z",
+      "next_run_at": "2026-08-20T01:00:00.000Z",
+      "updated_at": "2026-08-19 03:29:50"
+    }
+  ]
+}

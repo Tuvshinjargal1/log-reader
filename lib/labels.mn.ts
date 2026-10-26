@@ -93,6 +93,32 @@ export function formatAmount(amount: number): string {
   return new Intl.NumberFormat("mn-MN").format(amount) + " ₮";
 }
 
+/**
+ * Богиносгосон дүн — тэнхлэгийн заалт, бөмбөлгийн шошго, tooltip-д.
+ * `formatAmount` нь "1,435,200 ₮" гаргадаг бөгөөд 10px хэмжээтэй бөмбөлөг
+ * дотор уншигдахгүй. Хүснэгт, нийт дүнд `formatAmount` хэвээр ашиглана.
+ */
+export function formatCompactMnt(amount: number): string {
+  const a = Math.abs(amount);
+  const sign = amount < 0 ? "−" : "";
+  if (a >= 1_000_000_000) return `${sign}${(a / 1_000_000_000).toFixed(1)} тэрбум ₮`;
+  if (a >= 1_000_000) return `${sign}${(a / 1_000_000).toFixed(a >= 10_000_000 ? 0 : 1)} сая ₮`;
+  if (a >= 1_000) return `${sign}${Math.round(a / 1_000)} мянга ₮`;
+  return `${sign}${Math.round(a)} ₮`;
+}
+
+/** 0..1 → "84%" */
+export function formatPct(x: number, digits = 0): string {
+  return `${(x * 100).toFixed(digits)}%`;
+}
+
+/** Хувийн зөрүү — "н.э." = нэгж эзлэх хувь (percentage point) */
+export function formatPctPoints(delta: number): string {
+  const v = delta * 100;
+  const sign = v > 0 ? "+" : v < 0 ? "−" : "";
+  return `${sign}${Math.abs(v).toFixed(1)} н.э.`;
+}
+
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms} мс`;
   const sec = Math.round(ms / 1000);

@@ -42,6 +42,17 @@ export interface BranchLoad {
   avgDailyAmount: number;
   peakHour: number | null;
   peakHourAvgTx: number;
+  /** Тухайн хугацаанд нэг цагт бүртгэгдсэн хамгийн их чек */
+  peakHourMaxTx: number;
+  peakHourMaxDate: string | null;
+  peakHourMaxHour: number | null;
+  /** Тухайн хугацаанд нэг өдөрт бүртгэгдсэн хамгийн их чек */
+  peakDayTx: number;
+  peakDayDate: string | null;
+  /** Хамгийн сүүлийн өдрийн гүйлгээ */
+  latestDayTx: number;
+  latestDay: string | null;
+  dailyTx: { date: string; txCount: number }[];
   hourlyAvgTx: number[]; // 24 элемент — цаг тутмын өдрийн дундаж гүйлгээ
   score: number; // 0-100 ачааллын оноо
   branch: Gs25Branch | null; // газрын зурагтай тулгагдсан салбар

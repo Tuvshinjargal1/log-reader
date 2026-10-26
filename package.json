@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "smoke": "tsx scripts/smoke-db.ts && tsx scripts/smoke-engine.ts && tsx scripts/smoke-plan.ts && tsx scripts/smoke-p2.ts && tsx scripts/smoke-analytics.ts && tsx scripts/smoke-p3.ts && tsx scripts/smoke-sms-suggest.ts && tsx scripts/smoke-board.ts && tsx scripts/smoke-tx-stats.ts",
+    "smoke:board": "tsx scripts/smoke-board.ts",
+    "seed:demo": "tsx --disable-warning=ExperimentalWarning scripts/seed-demo.ts",
+    "seed:demo:reset": "tsx --disable-warning=ExperimentalWarning scripts/seed-demo.ts --reset"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -20,12 +24,13 @@
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.21",
     "@types/mssql": "^12.3.0",
-    "@types/node": "^20",
+    "@types/node": "^22.20.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
+    "tsx": "^4.23.1",
     "typescript": "^5"
   }
 }

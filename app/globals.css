@@ -18,9 +18,50 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/*
+ * Хэвлэх (A4) — захирал уулзалтаас гараад авч явах цаас.
+ * PDF library хэрэггүй: browser-ийн "print to PDF" хангалттай.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  /* Nav, tab, товчнууд — цаасан дээр хэрэггүй */
+  header nav,
+  button {
+    display: none !important;
+  }
+  /* Картууд хуудас дундуур хуваагдахгүй */
+  section,
+  table,
+  .rounded-xl {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+  /* Дотоод гүйлгэх зурвасыг дэлгэж бүтнээр хэвлэнэ */
+  .overflow-x-auto,
+  .overflow-y-auto {
+    overflow: visible !important;
+  }
+  table {
+    min-width: 0 !important;
+  }
+  /* Дэвсгэр өнгийг хадгална — verdict-ийн өнгө нь мэдээлэл юм */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 /* Leaflet divIcon — default white square-г арилгана */
 .leaflet-div-icon.gs25-load-marker,
-.leaflet-div-icon.gs25-suggest-marker {
+.leaflet-div-icon.gs25-suggest-marker,
+.leaflet-div-icon.gs25-fleet-marker {
   background: transparent;
   border: none;
 }

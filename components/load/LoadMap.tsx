@@ -12,7 +12,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { BranchLoad, Gs25Branch, Suggestion } from "@/lib/load/types";
-import { formatAmount } from "@/lib/labels.mn";
+import { ymdToIso } from "@/lib/sms/suggest";
 
 interface LoadMapProps {
   branches: Gs25Branch[];
@@ -34,12 +34,17 @@ function codeKey(code: string): string {
   return code.trim().replace(/^[Vv]/, "").replace(/^0+/, "");
 }
 
-function analyzedIcon(score: number, selected: boolean, name: string): L.DivIcon {
+function fmtHour(h: number): string {
+  return `${String(h).padStart(2, "0")}:00`;
+}
+
+function analyzedIcon(score: number, selected: boolean, name: string, dailyTx: number): L.DivIcon {
   const color = loadColor(score);
   const size = selected ? 44 : 36;
   const border = selected ? "3px solid #0f172a" : "3px solid #fff";
   const short =
     name.length > 10 ? name.slice(0, 9) + "…" : name;
+  const label = dailyTx > 0 ? String(Math.round(dailyTx)) : String(score);
   return L.divIcon({
     className: "gs25-load-marker",
     html: `<div style="
@@ -52,7 +57,7 @@ function analyzedIcon(score: number, selected: boolean, name: string): L.DivIcon
         background:${color};color:#fff;font-size:12px;font-weight:700;
         border:${border};box-shadow:0 2px 8px rgba(0,0,0,.45);
         font-family:ui-sans-serif,system-ui,sans-serif;
-      ">${score}</div>
+      ">${label}</div>
       <div style="
         max-width:92px;padding:1px 5px;border-radius:4px;
         background:rgba(15,23,42,.88);color:#fff;font-size:10px;
@@ -199,32 +204,63 @@ export default function LoadMap({
               <Marker
                 key={l.bizplCd}
                 position={[l.branch!.lat!, l.branch!.lng!]}
-                icon={analyzedIcon(l.score, selected, name)}
+                icon={analyzedIcon(l.score, selected, name, l.avgDailyTx)}
                 zIndexOffset={selected ? 1000 : 500 + l.score}
                 eventHandlers={{ click: () => onSelect(l.bizplCd) }}
               >
                 <Popup>
-                  <div className="min-w-44 text-sm">
+                  <div className="min-w-52 text-sm">
                     <div className="font-semibold">
                       {name}{" "}
                       <span className="font-mono text-xs text-stone-400">
                         {l.bizplCd}
                       </span>
                     </div>
-                    <div className="mt-1 space-y-0.5 text-xs text-stone-600">
-                      <div>
-                        Ачааллын оноо: <b>{l.score}</b> / 100
+                    <div className="mt-0.5 font-mono text-[10px] text-stone-400">
+                      {l.ips.join(", ")}
+                    </div>
+                    <div className="mt-2 space-y-1 text-xs text-stone-600">
+                      <div className="flex justify-between gap-3">
+                        <span>Өдрийн гүйлгээ</span>
+                        <b className="tabular-nums text-stone-800">
+                          {Math.round(l.avgDailyTx).toLocaleString("mn-MN")}
+                        </b>
                       </div>
-                      <div>
-                        Өдрийн дундаж гүйлгээ: {l.avgDailyTx.toFixed(0)}
+                      <div className="-mt-0.5 text-right text-[10px] text-stone-400">
+                        сүүлийн 1 сарын дундаж
                       </div>
-                      {l.peakHour !== null && (
-                        <div>
-                          Оргил цаг: {String(l.peakHour).padStart(2, "0")}:00 (
-                          {l.peakHourAvgTx.toFixed(0)} гүйлгээ)
+                      <div className="flex justify-between gap-3">
+                        <span>Сарын нийт гүйлгээ</span>
+                        <b className="tabular-nums text-stone-800">
+                          {l.totalTx.toLocaleString("mn-MN")}
+                        </b>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span>Нэг цагийн хамгийн их</span>
+                        <b className="tabular-nums text-stone-800">
+                          {l.peakHourMaxTx > 0
+                            ? l.peakHourMaxTx.toLocaleString("mn-MN")
+                            : "—"}
+                        </b>
+                      </div>
+                      {l.peakHourMaxDate != null && l.peakHourMaxHour != null && (
+                        <div className="-mt-0.5 text-right text-[10px] text-stone-400">
+                          {ymdToIso(l.peakHourMaxDate)} {fmtHour(l.peakHourMaxHour)}
                         </div>
                       )}
-                      <div>Нийт дүн: {formatAmount(l.totalAmount)}</div>
+                      <div className="flex justify-between gap-3">
+                        <span>Өдрийн хамгийн их</span>
+                        <b className="tabular-nums text-stone-800">
+                          {l.peakDayTx > 0
+                            ? l.peakDayTx.toLocaleString("mn-MN")
+                            : "—"}
+                        </b>
+                      </div>
+                      {l.peakDayDate && (
+                        <div className="-mt-0.5 text-right text-[10px] text-stone-400">
+                          {ymdToIso(l.peakDayDate)}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Popup>
@@ -260,7 +296,7 @@ export default function LoadMap({
           <div className="flex flex-col gap-1 text-stone-600">
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-3 w-3 rounded-full bg-red-600" />{" "}
-              Өндөр ачаалал (70+)
+              Өндөр ачаалал · тоо = өдрийн гүйлгээ
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-3 w-3 rounded-full bg-amber-600" />{" "}
